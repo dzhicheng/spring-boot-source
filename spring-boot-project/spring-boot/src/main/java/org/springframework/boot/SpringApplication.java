@@ -438,6 +438,7 @@ public class SpringApplication {
 
 	private SpringApplicationRunListeners getRunListeners(String[] args) {
 		Class<?>[] types = new Class<?>[] { SpringApplication.class, String[].class };
+		// 从spring.factories文件中找到类型是SpringApplicationRunListener类型的所有配置
 		return new SpringApplicationRunListeners(logger,
 				getSpringFactoriesInstances(SpringApplicationRunListener.class, types, this, args));
 	}

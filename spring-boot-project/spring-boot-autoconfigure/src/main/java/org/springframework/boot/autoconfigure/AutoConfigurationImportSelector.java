@@ -58,7 +58,7 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 /**
- * {@link DeferredImportSelector} to handle {@link EnableAutoConfiguration
+ * 加载自动装配类. {@link DeferredImportSelector} to handle {@link EnableAutoConfiguration
  * auto-configuration}. This class can also be subclassed if a custom variant of
  * {@link EnableAutoConfiguration @EnableAutoConfiguration} is needed.
  *
@@ -88,41 +88,58 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 
 	private ResourceLoader resourceLoader;
 
+	/**
+	 * 获取所有符合条件的类的全限定类名，这些类需要被加载到 IoC 容器中.
+	 * @param annotationMetadata metadata参数
+	 * @return
+	 */
 	@Override
 	public String[] selectImports(AnnotationMetadata annotationMetadata) {
+		// 1.判断自动装配开关是否打开。
 		if (!isEnabled(annotationMetadata)) {
 			return NO_IMPORTS;
 		}
 		AutoConfigurationMetadata autoConfigurationMetadata = AutoConfigurationMetadataLoader
 				.loadMetadata(this.beanClassLoader);
-		// 获取所有的自动配置类
+		// 2.获取所有的自动配置类
 		AutoConfigurationEntry autoConfigurationEntry = getAutoConfigurationEntry(autoConfigurationMetadata,
 				annotationMetadata);
 		return StringUtils.toStringArray(autoConfigurationEntry.getConfigurations());
 	}
 
 	/**
-	 * Return the {@link AutoConfigurationEntry} based on the {@link AnnotationMetadata}
-	 * of the importing {@link Configuration @Configuration} class.
+	 * 负责加载自动配置类. Return the {@link AutoConfigurationEntry} based on the
+	 * {@link AnnotationMetadata} of the importing {@link Configuration @Configuration}
+	 * class.
 	 * @param autoConfigurationMetadata the auto-configuration metadata
 	 * @param annotationMetadata the annotation metadata of the configuration class
 	 * @return the auto-configurations that should be imported
 	 */
 	protected AutoConfigurationEntry getAutoConfigurationEntry(AutoConfigurationMetadata autoConfigurationMetadata,
 			AnnotationMetadata annotationMetadata) {
+		// 1.判断自动装配开关是否打开。默认spring.boot.enableautoconfiguration=true，
+		// 可在 application.properties 或 application.yml 中设置
 		if (!isEnabled(annotationMetadata)) {
 			return EMPTY_ENTRY;
 		}
+
+		// 2.用于获取EnableAutoConfiguration注解中的 exclude 和 excludeName
 		AnnotationAttributes attributes = getAttributes(annotationMetadata);
+
+		// 3.获取需要自动装配的所有配置类，读取META-INF/spring.factories
 		// SPI获取EnableAutoConfiguration为key的所有实现类
 		List<String> configurations = getCandidateConfigurations(annotationMetadata, attributes);
+
+		// 4.经历了一遍筛选，@ConditionalOnXXX 中的所有条件都满足，该类才会生效
 		configurations = removeDuplicates(configurations);
 		Set<String> exclusions = getExclusions(annotationMetadata, attributes);
 		checkExcludedClasses(configurations, exclusions);
 		configurations.removeAll(exclusions);
+
 		// 把某些自动配置类过滤掉
 		configurations = filter(configurations, autoConfigurationMetadata);
 		fireAutoConfigurationImportEvents(configurations, exclusions);
+
 		// 包装成自动配置实体类
 		return new AutoConfigurationEntry(configurations, exclusions);
 	}
@@ -393,6 +410,12 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 			this.resourceLoader = resourceLoader;
 		}
 
+		/**
+		 * 1.在spring.factories中收集所有含有@EnableAutoConfiguration注解的类的所有信息.
+		 * 被ConfigurationClassPostProcessor调用
+		 * @param annotationMetadata 参数1
+		 * @param deferredImportSelector 参数2
+		 */
 		@Override
 		public void process(AnnotationMetadata annotationMetadata, DeferredImportSelector deferredImportSelector) {
 			Assert.state(deferredImportSelector instanceof AutoConfigurationImportSelector,
@@ -407,6 +430,11 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 			}
 		}
 
+		/**
+		 * 2.收集含有@EnableAutoConfiguration注解的类加载到spring容器，完成实例化.
+		 * 通过ConfigurationClassPostProcessor封装为BeanDefinition对象
+		 * @return
+		 */
 		@Override
 		public Iterable<Entry> selectImports() {
 			if (this.autoConfigurationEntries.isEmpty()) {
