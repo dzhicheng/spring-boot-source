@@ -90,7 +90,7 @@ public class AutoConfigurationImportSelector implements DeferredImportSelector, 
 
 	/**
 	 * 获取所有符合条件的类的全限定类名，这些类需要被加载到 IoC 容器中.
-	 * @param annotationMetadata metadata参数
+	 * @param annotationMetadata metadata参数.
 	 * @return
 	 */
 	@Override
